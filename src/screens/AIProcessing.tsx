@@ -46,7 +46,7 @@ const AIProcessing = () => {
             ],
             scriptures: ['James 2:17', 'Hebrews 11:1', 'Genesis 12:1'],
             key_moments: ['"Delayed obedience is still disobedience."']
-          });
+          } as any);
 
           // Mock Revelation Map nodes & edges
           await supabase.from('revelation_maps').insert({
@@ -68,7 +68,7 @@ const AIProcessing = () => {
               { source: 'action', target: 'james' },
               { source: 'insight1', target: 'waiting' }
             ]
-          });
+          } as any);
         } catch (err) {
           console.error('Failed to save mock AI data', err);
         }

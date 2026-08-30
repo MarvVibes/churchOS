@@ -24,7 +24,7 @@ const PersonalReflection = () => {
         personal_takeaway: q2,
         life_application: q3,
         potential_change: q4
-      });
+      } as any);
       navigate('/report');
     } catch (err) {
       console.error('Failed to save reflections', err);

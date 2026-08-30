@@ -43,7 +43,7 @@ const SetIntention = () => {
         start_time: new Date().toISOString(),
         end_time: null,
         status: 'in_progress',
-      });
+      } as any);
 
       // 2. Save intentions
       await supabase.from('intentions').insert({
@@ -52,13 +52,13 @@ const SetIntention = () => {
         personal_context: previousState?.mindContext || null,
         desired_outcome: desiredOutcome,
         presence_intentions: presenceIntentions
-      });
+      } as any);
 
       // 3. Update global state
       startSession(newSession);
 
       // 4. Navigate
-      navigate('/service', { replace: true });
+      navigate('/service', { replace: true } as any);
     } catch (err) {
       console.error('Failed to start session', err);
       setIsStarting(false);

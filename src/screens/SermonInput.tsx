@@ -27,7 +27,7 @@ const SermonInput = () => {
         church: church || null,
         transcript: transcript || null,
         source_type: 'text'
-      });
+      } as any);
       
       navigate('/processing');
     } catch (err) {

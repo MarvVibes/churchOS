@@ -2,8 +2,7 @@ import { useEffect, useState, useMemo  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { supabase } from '../lib/supabase';
-import { ReactFlow, Controls, Background } from '@xyflow/react';
-import type { Node, Edge } from '@xyflow/react';
+import { ReactFlow, Controls, Background, type Node, type Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 const RevelationMap = () => {

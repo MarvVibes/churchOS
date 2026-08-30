@@ -20,7 +20,7 @@ export const fetchRecentSessions = async (userId: string) => {
 export const createSession = async (session: Omit<ServiceSession, 'id' | 'created_at'>) => {
   const { data, error } = await supabase
     .from('service_sessions')
-    .insert(session)
+    .insert(session as any)
     .select()
     .single();
 
@@ -54,7 +54,7 @@ export const generateDemoDataIfNeeded = async (userId: string) => {
       { session_id: session.id, category: 'insight', content: 'I keep waiting for clarity while ignoring what I already know.', timestamp_seconds: 600 },
       { session_id: session.id, category: 'scripture', content: 'James 2:17', timestamp_seconds: 1200 },
       { session_id: session.id, category: 'powerful_moment', content: 'Genuine faith is demonstrated through action, especially when certainty is unavailable.', timestamp_seconds: 1800 }
-    ]);
+    ] as any);
 
     // Add action commitment
     await supabase.from('action_commitments').insert({
@@ -62,7 +62,7 @@ export const generateDemoDataIfNeeded = async (userId: string) => {
       action: 'Complete and publish my proposal.',
       deadline: 'Wednesday',
       status: 'pending'
-    });
+    } as any);
     
     // Add simulated AI processing (Sermon Analysis)
     await supabase.from('sermon_analysis').insert({
@@ -75,7 +75,7 @@ export const generateDemoDataIfNeeded = async (userId: string) => {
       ],
       scriptures: ['James 2:17', 'Hebrews 11:1'],
       key_moments: ['When he said "Delayed obedience is still disobedience."']
-    });
+    } as any);
 
   } catch (err) {
     console.error('Demo data generation failed', err);

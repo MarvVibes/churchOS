@@ -71,7 +71,7 @@ const ServiceMode = () => {
         category: category as Category,
         content,
         timestamp_seconds: timestamp
-      });
+      } as any);
     } catch (err) {
       console.error('Failed to sync capture', err);
     }
@@ -156,7 +156,7 @@ const ServiceMode = () => {
               {activeCaptures.map(capture => (
                 <div key={capture.id} className="mb-4">
                   <div className="flex items-center gap-2 text-secondary mb-1" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                    <span>{new Date(activeSession.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span>{new Date(activeSession.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'} as any)}</span>
                     <span>•</span>
                     <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{capture.category.replace('_', ' ')}</span>
                   </div>

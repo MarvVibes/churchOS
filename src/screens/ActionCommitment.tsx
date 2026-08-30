@@ -26,7 +26,7 @@ const ActionCommitment = () => {
         deadline,
         reason: reason || null,
         status: 'pending'
-      });
+      } as any);
       navigate('/final-report');
     } catch (err) {
       console.error('Failed to save commitment', err);
