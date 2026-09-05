@@ -1,162 +1,196 @@
-import { useState, useEffect, ReactNode } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
-import { StopCircle, Zap, Book, MessageCircle, CheckSquare, Lightbulb } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Mic, MicOff, StopCircle, Sparkles, BookOpen } from 'lucide-react'
 import { useAppStore } from '../store'
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { supabase } from '../lib/supabase'
-import QuickCaptureModal from '../components/QuickCaptureModal'
-
-type Category = 'insight' | 'powerful_moment' | 'scripture' | 'question' | 'action'
-
-const CATEGORY_CONFIG: Record<Category, { icon: ReactNode, color: string, label: string }> = {
-  insight: { icon: <Lightbulb size={20} />, color: 'var(--color-primary)', label: 'Insight' },
-  powerful_moment: { icon: <Zap size={20} />, color: 'var(--color-accent)', label: 'Moment' },
-  scripture: { icon: <Book size={20} />, color: '#60a5fa', label: 'Scripture' },
-  question: { icon: <MessageCircle size={20} />, color: '#fbbf24', label: 'Question' },
-  action: { icon: <CheckSquare size={20} />, color: '#34d399', label: 'Action' }
-}
 
 export default function ServiceMode() {
   const navigate = useNavigate()
-  const { activeSession, activeCaptures, addCapture } = useAppStore()
+  const { activeSession, addManualNote } = useAppStore()
   
-  const [elapsed, setElapsed] = useState(0)
-  const [activeModal, setActiveModal] = useState<Category | null>(null)
+  // Custom speech hook
+  const { 
+    isListening, 
+    transcript, 
+    interimTranscript, 
+    startListening, 
+    stopListening,
+    error,
+    isSupported
+  } = useSpeechRecognition()
 
-  // Timer logic
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [manualNoteText, setManualNoteText] = useState('')
+  const [mockAiInsights, setMockAiInsights] = useState<{type: 'verse' | 'point', text: string}[]>([])
+
+  const transcriptEndRef = useRef<HTMLDivElement>(null)
+
+  // Timer
   useEffect(() => {
-    if (!activeSession) return
-    const startTime = new Date(activeSession.start_time).getTime()
-    
-    const updateTimer = () => {
-      const now = new Date().getTime()
-      setElapsed(Math.floor((now - startTime) / 1000))
+    if (!activeSession) {
+      navigate('/')
+      return
     }
-    
-    updateTimer()
-    const interval = setInterval(updateTimer, 1000)
-    return () => clearInterval(interval)
-  }, [activeSession])
 
-  // Protect route
-  if (!activeSession) {
-    return <Navigate to="/" replace />
-  }
+    const start = new Date(activeSession.start_time).getTime()
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - start) / 1000))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [activeSession, navigate])
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [transcript, interimTranscript])
+
+  // Mock AI Engine Simulator (generates fake insights as transcript grows)
+  useEffect(() => {
+    if (transcript.length > 50 && mockAiInsights.length === 0) {
+      setTimeout(() => {
+        setMockAiInsights(prev => [...prev, { type: 'point', text: 'Theme detected: Faith and Perseverance' }])
+      }, 2000)
+    }
+    if (transcript.length > 150 && mockAiInsights.length === 1) {
+      setTimeout(() => {
+        setMockAiInsights(prev => [...prev, { type: 'verse', text: 'James 1:3 - Knowing this, that the trying of your faith worketh patience.' }])
+      }, 2000)
+    }
+  }, [transcript, mockAiInsights.length])
 
   const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
   }
 
-  const handleSaveCapture = async (content: string) => {
-    if (!activeModal || !activeSession) return
+  const handleEndService = async () => {
+    if (!activeSession) return
+    
+    // Save any pending manual note
+    if (manualNoteText.trim()) {
+      addManualNote(manualNoteText.trim())
+    }
+
+    // Stop microphone
+    stopListening()
 
     try {
-      // Optimistic save
-      const captureData = {
-        session_id: activeSession.id,
-        category: activeModal,
-        content,
-        timestamp_seconds: elapsed
-      }
+      // 1. Update session status and end time, and save the full transcript!
+      await supabase
+        .from('service_sessions')
+        .update({ 
+          status: 'completed',
+          end_time: new Date().toISOString()
+          // Note: In a real app we would add a 'transcript' column to service_sessions and save it here.
+          // For the MVP demo, we will just pass it in state or context to the next screen.
+        })
+        .eq('id', activeSession.id)
 
-      const { data, error } = await supabase
-        .from('captured_moments')
-        .insert(captureData)
-        .select()
-        .single()
-
-      if (error) throw error
-      addCapture(data)
-      setActiveModal(null)
+      navigate('/end', { state: { fullTranscript: transcript } })
     } catch (err) {
-      console.error('Failed to save capture:', err)
-      alert('Failed to save. Please try again.')
+      console.error('Failed to end service', err)
+      alert('Failed to end service. Please try again.')
     }
+  }
+
+  if (!isSupported) {
+    return (
+      <div className="state-center text-danger h-full">
+        <p>Speech recognition is not supported in this browser.</p>
+        <p className="text-sm mt-sm text-2">Please use Google Chrome for the automated recording features.</p>
+      </div>
+    )
   }
 
   return (
-    <div className="flex-col h-full bg-bg" style={{ minHeight: '100vh', padding: 'var(--space-lg)', position: 'relative' }}>
+    <div className="flex-col h-full bg-bg" style={{ minHeight: '100vh', position: 'relative', margin: '-var(--space-lg)', padding: '0' }}>
       
-      {/* Header / Timer */}
-      <div className="flex justify-between items-center mb-xl mt-sm">
+      {/* Top Header */}
+      <div className="flex items-center justify-between p-md bg-surface border-b border-border z-10 sticky top-0">
         <div className="flex items-center gap-sm">
-          <div className="live-dot" />
-          <span className="font-bold tracking-widest text-sm" style={{ color: 'var(--color-danger)' }}>
-            LIVE
-          </span>
-        </div>
-        <div className="text-2xl font-bold font-mono tracking-wider">
-          {formatTime(elapsed)}
-        </div>
-      </div>
-
-      <div className="text-center mb-xl">
-        <h2 className="text-3xl font-bold mb-xs">{activeSession.church_name || 'Sunday Service'}</h2>
-        <p className="text-2">{new Date(activeSession.start_time).toLocaleDateString()}</p>
-      </div>
-
-      {/* Capture Grid */}
-      <div className="grid gap-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginBottom: 'var(--space-xl)' }}>
-        {(Object.entries(CATEGORY_CONFIG) as [Category, typeof CATEGORY_CONFIG[Category]][]).map(([key, config]) => (
-          <button
-            key={key}
-            className="card card-interactive flex-col items-center justify-center gap-sm"
-            style={{ padding: 'var(--space-xl) var(--space-md)', borderColor: config.color }}
-            onClick={() => setActiveModal(key)}
-          >
-            <div style={{ color: config.color }}>{config.icon}</div>
-            <span className="font-bold text-sm">{config.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Timeline (Recent Captures) */}
-      <div className="flex-1">
-        <div className="section-header">Timeline</div>
-        {activeCaptures.length === 0 ? (
-          <div className="state-center text-3 py-xl">
-            <p className="text-sm">Tap a category above to capture a moment.</p>
+          {isListening ? (
+            <button onClick={stopListening} className="btn-icon bg-danger bg-opacity-20 border-danger text-danger rounded-full">
+              <Mic size={18} />
+            </button>
+          ) : (
+            <button onClick={startListening} className="btn-icon bg-surface-2 rounded-full">
+              <MicOff size={18} />
+            </button>
+          )}
+          <div className="flex-col">
+            <span className="text-sm font-bold">{isListening ? 'Recording Live' : 'Paused'}</span>
+            <span className="text-xs text-danger font-mono tracking-wider">{formatTime(elapsedTime)}</span>
           </div>
-        ) : (
-          <div className="scroll-list">
-            {[...activeCaptures].sort((a, b) => b.timestamp_seconds - a.timestamp_seconds).map(capture => {
-              const config = CATEGORY_CONFIG[capture.category]
-              return (
-                <div key={capture.id} className="card py-sm px-md flex items-start gap-md">
-                  <div className="mt-xs" style={{ color: config.color }}>
-                    {config.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-1">{capture.content}</p>
-                    <p className="text-xs text-3 mt-xs">{formatTime(capture.timestamp_seconds)}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* End Service Button */}
-      <div className="sticky bottom-0 pt-lg pb-md" style={{ background: 'linear-gradient(to bottom, transparent, var(--color-bg) 30%)' }}>
+        </div>
+        
         <button 
-          className="btn btn-secondary w-full"
-          onClick={() => navigate('/end')}
+          onClick={handleEndService}
+          className="flex items-center gap-xs px-md py-sm bg-surface-2 border border-border rounded-full text-xs font-bold uppercase tracking-widest hover:border-danger hover:text-danger transition-all"
         >
-          <StopCircle size={18} />
-          End Service
+          <StopCircle size={16} />
+          End
         </button>
       </div>
 
-      {/* Capture Modal Overlay */}
-      <QuickCaptureModal 
-        category={activeModal}
-        onClose={() => setActiveModal(null)}
-        onSave={handleSaveCapture}
-      />
+      {error && (
+        <div className="p-sm bg-danger text-white text-xs text-center">{error}</div>
+      )}
+
+      {/* Main Content Split View */}
+      <div className="flex-col flex-1 overflow-hidden relative">
+        
+        {/* Top Half: Live Transcript & AI */}
+        <div className="flex-1 overflow-y-auto p-md" style={{ pb: '120px' }}>
+          
+          <div className="section-header flex items-center gap-sm mb-md text-primary">
+            <Sparkles size={14} /> AI Processing Engine
+          </div>
+
+          {/* Transcript Feed */}
+          <div className="text-sm text-2 leading-relaxed mb-xl">
+            {transcript.length === 0 && !isListening && (
+              <p className="opacity-50 italic">Tap the microphone to start recording the service...</p>
+            )}
+            {transcript}
+            <span className="opacity-50 italic"> {interimTranscript}</span>
+            <div ref={transcriptEndRef} />
+          </div>
+
+          {/* Mock AI Insights Feed */}
+          {mockAiInsights.length > 0 && (
+            <div className="flex-col gap-sm mt-xl mb-xl border-t border-border pt-md">
+              <p className="text-xs font-bold uppercase tracking-widest text-3 mb-xs">Live Insights</p>
+              {mockAiInsights.map((insight, idx) => (
+                <div key={idx} className="card py-sm px-md flex items-start gap-md animate-slide-up border-primary-dim bg-primary-soft" style={{ backgroundColor: 'var(--color-primary-dim)' }}>
+                  {insight.type === 'verse' ? <BookOpen size={16} className="text-primary mt-1" /> : <Sparkles size={16} className="text-accent mt-1" />}
+                  <p className="text-sm">{insight.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+
+        {/* Bottom Half: Manual Notes */}
+        <div className="bg-surface border-t border-border p-md z-10 sticky bottom-0">
+          <p className="text-xs font-bold uppercase tracking-widest text-3 mb-sm">My Personal Notes</p>
+          <textarea 
+            className="input-field" 
+            rows={3}
+            placeholder="Type anything here... it won't interrupt the AI recording."
+            value={manualNoteText}
+            onChange={(e) => setManualNoteText(e.target.value)}
+            style={{ resize: 'none', background: 'var(--color-bg)' }}
+          />
+        </div>
+
+      </div>
+
     </div>
   )
 }

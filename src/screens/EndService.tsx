@@ -1,10 +1,11 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { CheckCircle, XCircle } from 'lucide-react'
 import { useAppStore } from '../store'
 
 export default function EndService() {
   const navigate = useNavigate()
-  const { activeSession, activeCaptures, endSession } = useAppStore()
+  const location = useLocation()
+  const { activeSession, manualNotes, endSession } = useAppStore()
 
   if (!activeSession) {
     navigate('/')
@@ -13,15 +14,18 @@ export default function EndService() {
 
   const handleEnd = () => {
     endSession()
-    navigate('/sermon-input')
+    navigate('/processing', { state: { fullTranscript: location.state?.fullTranscript || '' } })
   }
 
   return (
     <div className="animate-fade-in flex-col h-full items-center justify-center text-center px-lg">
       <div className="mb-xl">
         <h1 className="mb-sm">End Service?</h1>
-        <p className="text-2">You've captured {activeCaptures.length} moments.</p>
-        <p className="text-2 mt-xs">Are you ready to process this session?</p>
+        <p className="text-2">You have {manualNotes.length} manual notes saved.</p>
+        <p className="text-2 mt-xs text-sm italic opacity-70 border border-border p-sm rounded-md bg-surface mt-md text-left">
+          Snippet: "{location.state?.fullTranscript?.substring(0, 100)}..."
+        </p>
+        <p className="text-2 mt-md font-bold">Ready to compile the Study Schedule?</p>
       </div>
 
       <div className="flex-col gap-md w-full max-w-sm">

@@ -11,9 +11,10 @@ import StartSession from './screens/StartSession'
 import SetIntention from './screens/SetIntention'
 import ServiceMode from './screens/ServiceMode'
 import EndService from './screens/EndService'
-import SermonInput from './screens/SermonInput'
 import AIProcessing from './screens/AIProcessing'
-import PersonalReflection from './screens/PersonalReflection'
+import StudySchedule from './screens/StudySchedule'
+
+// Legacy Phase 7/8 screens (will be cleaned up later)
 import SermonReport from './screens/SermonReport'
 import RevelationMap from './screens/RevelationMap'
 import PersonalConnection from './screens/PersonalConnection'
@@ -50,11 +51,11 @@ function App() {
         <Route path="/end" element={
           <div className="app-shell"><main className="screen"><EndService /></main></div>
         } />
-        <Route path="/sermon-input" element={
-          <div className="app-shell"><main className="screen"><SermonInput /></main></div>
-        } />
         <Route path="/processing" element={
           <div className="app-shell"><main className="screen"><AIProcessing /></main></div>
+        } />
+        <Route path="/schedule" element={
+          <div className="app-shell"><main className="screen"><StudySchedule /></main></div>
         } />
         <Route path="/reflection" element={
           <div className="app-shell"><main className="screen"><PersonalReflection /></main></div>

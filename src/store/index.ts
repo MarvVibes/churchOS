@@ -8,12 +8,14 @@ type CapturedMoment = Database['public']['Tables']['captured_moments']['Row']
 interface AppState {
   activeSession: ServiceSession | null
   activeCaptures: CapturedMoment[]
+  manualNotes: string[]
   // Actions
   startSession: (session: ServiceSession) => void
   endSession: () => void
   addCapture: (capture: CapturedMoment) => void
   updateCapture: (id: string, content: string) => void
   removeCapture: (id: string) => void
+  addManualNote: (note: string) => void
   clearSession: () => void
 }
 
@@ -22,9 +24,10 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       activeSession: null,
       activeCaptures: [],
+      manualNotes: [],
 
       startSession: (session) =>
-        set({ activeSession: session, activeCaptures: [] }),
+        set({ activeSession: session, activeCaptures: [], manualNotes: [] }),
 
       endSession: () =>
         set((s) => ({
@@ -48,8 +51,11 @@ export const useAppStore = create<AppState>()(
           activeCaptures: s.activeCaptures.filter((c) => c.id !== id),
         })),
 
+      addManualNote: (note) =>
+        set((s) => ({ manualNotes: [...s.manualNotes, note] })),
+
       clearSession: () =>
-        set({ activeSession: null, activeCaptures: [] }),
+        set({ activeSession: null, activeCaptures: [], manualNotes: [] }),
     }),
     { name: 'church-os-store' }
   )
