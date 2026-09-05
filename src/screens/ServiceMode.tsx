@@ -1,4 +1,5 @@
-import { useState, useEffect  } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { supabase } from '../lib/supabase';
@@ -7,7 +8,7 @@ import QuickCaptureModal from '../components/QuickCaptureModal';
 
 type Category = 'insight' | 'powerful_moment' | 'scripture' | 'question' | 'action';
 
-const CAPTURE_BUTTONS: { category: Category; icon: React.ReactNode; label: string; desc: string }[] = [
+const CAPTURE_BUTTONS: { category: Category; icon: ReactNode; label: string; desc: string }[] = [
   { category: 'insight', icon: <Lightbulb size={24} />, label: 'INSIGHT', desc: 'Something just became clear' },
   { category: 'powerful_moment', icon: <Flame size={24} />, label: 'POWERFUL', desc: 'That statement hit deeply' },
   { category: 'scripture', icon: <BookOpen size={24} />, label: 'SCRIPTURE', desc: 'Capture a verse' },
