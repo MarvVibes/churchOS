@@ -15,11 +15,6 @@ import AIProcessing from './screens/AIProcessing'
 import StudySchedule from './screens/StudySchedule'
 
 // Legacy Phase 7/8 screens (will be cleaned up later)
-import SermonReport from './screens/SermonReport'
-import RevelationMap from './screens/RevelationMap'
-import PersonalConnection from './screens/PersonalConnection'
-import ActionCommitment from './screens/ActionCommitment'
-import FinalReport from './screens/FinalReport'
 import SessionDetails from './screens/SessionDetails'
 
 function App() {
@@ -56,24 +51,6 @@ function App() {
         } />
         <Route path="/schedule" element={
           <div className="app-shell"><main className="screen"><StudySchedule /></main></div>
-        } />
-        <Route path="/reflection" element={
-          <div className="app-shell"><main className="screen"><PersonalReflection /></main></div>
-        } />
-        <Route path="/report" element={
-          <div className="app-shell"><main className="screen"><SermonReport /></main></div>
-        } />
-        <Route path="/map" element={
-          <div className="app-shell"><main className="screen"><RevelationMap /></main></div>
-        } />
-        <Route path="/connection" element={
-          <div className="app-shell"><main className="screen"><PersonalConnection /></main></div>
-        } />
-        <Route path="/action" element={
-          <div className="app-shell"><main className="screen"><ActionCommitment /></main></div>
-        } />
-        <Route path="/final-report" element={
-          <div className="app-shell"><main className="screen"><FinalReport /></main></div>
         } />
       </Routes>
     </BrowserRouter>
