@@ -1,202 +1,162 @@
-import { useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import { Lightbulb, Flame, BookOpen, HelpCircle, Target, Mic, List } from 'lucide-react';
-import QuickCaptureModal from '../components/QuickCaptureModal';
+import { useState, useEffect, ReactNode } from 'react'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { StopCircle, Zap, Book, MessageCircle, CheckSquare, Lightbulb } from 'lucide-react'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
+import QuickCaptureModal from '../components/QuickCaptureModal'
 
-type Category = 'insight' | 'powerful_moment' | 'scripture' | 'question' | 'action';
+type Category = 'insight' | 'powerful_moment' | 'scripture' | 'question' | 'action'
 
-const CAPTURE_BUTTONS: { category: Category; icon: ReactNode; label: string; desc: string }[] = [
-  { category: 'insight', icon: <Lightbulb size={24} />, label: 'INSIGHT', desc: 'Something just became clear' },
-  { category: 'powerful_moment', icon: <Flame size={24} />, label: 'POWERFUL', desc: 'That statement hit deeply' },
-  { category: 'scripture', icon: <BookOpen size={24} />, label: 'SCRIPTURE', desc: 'Capture a verse' },
-  { category: 'question', icon: <HelpCircle size={24} />, label: 'QUESTION', desc: 'Something to explore' },
-  { category: 'action', icon: <Target size={24} />, label: 'ACTION', desc: 'Something I need to do' },
-];
+const CATEGORY_CONFIG: Record<Category, { icon: ReactNode, color: string, label: string }> = {
+  insight: { icon: <Lightbulb size={20} />, color: 'var(--color-primary)', label: 'Insight' },
+  powerful_moment: { icon: <Zap size={20} />, color: 'var(--color-accent)', label: 'Moment' },
+  scripture: { icon: <Book size={20} />, color: '#60a5fa', label: 'Scripture' },
+  question: { icon: <MessageCircle size={20} />, color: '#fbbf24', label: 'Question' },
+  action: { icon: <CheckSquare size={20} />, color: '#34d399', label: 'Action' }
+}
 
-const ServiceMode = () => {
-  const navigate = useNavigate();
-  const { activeSession, activeCaptures, addCapture } = useAppStore();
+export default function ServiceMode() {
+  const navigate = useNavigate()
+  const { activeSession, activeCaptures, addCapture } = useAppStore()
   
-  const [duration, setDuration] = useState('00:00:00');
-  const [activeModal, setActiveModal] = useState<Category | null>(null);
-  const [showTimeline, setShowTimeline] = useState(false);
+  const [elapsed, setElapsed] = useState(0)
+  const [activeModal, setActiveModal] = useState<Category | null>(null)
 
+  // Timer logic
   useEffect(() => {
-    if (!activeSession || activeSession.status !== 'in_progress') {
-      navigate('/');
-      return;
+    if (!activeSession) return
+    const startTime = new Date(activeSession.start_time).getTime()
+    
+    const updateTimer = () => {
+      const now = new Date().getTime()
+      setElapsed(Math.floor((now - startTime) / 1000))
     }
-
-    const interval = setInterval(() => {
-      const start = new Date(activeSession.start_time).getTime();
-      const now = Date.now();
-      const diff = Math.floor((now - start) / 1000);
-      
-      const hours = Math.floor(diff / 3600);
-      const minutes = Math.floor((diff % 3600) / 60);
-      const seconds = diff % 60;
-      
-      setDuration(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeSession, navigate]);
-
-  const handleSaveCapture = async (content: string, category: string) => {
-    if (!activeSession) return;
     
-    const start = new Date(activeSession.start_time).getTime();
-    const timestamp = Math.floor((Date.now() - start) / 1000);
-    
-    // Create local object
-    const newCapture = {
-      id: crypto.randomUUID(),
-      session_id: activeSession.id,
-      category: category as Category,
-      content,
-      timestamp_seconds: timestamp,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [activeSession])
 
-    // Save locally immediately for fast UI
-    addCapture(newCapture);
+  // Protect route
+  if (!activeSession) {
+    return <Navigate to="/" replace />
+  }
 
-    // Persist to DB asynchronously
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  const handleSaveCapture = async (content: string) => {
+    if (!activeModal || !activeSession) return
+
     try {
-      await supabase.from('captured_moments').insert({
+      // Optimistic save
+      const captureData = {
         session_id: activeSession.id,
-        category: category as Category,
+        category: activeModal,
         content,
-        timestamp_seconds: timestamp
-      } as any);
+        timestamp_seconds: elapsed
+      }
+
+      const { data, error } = await supabase
+        .from('captured_moments')
+        .insert(captureData)
+        .select()
+        .single()
+
+      if (error) throw error
+      addCapture(data)
+      setActiveModal(null)
     } catch (err) {
-      console.error('Failed to sync capture', err);
+      console.error('Failed to save capture:', err)
+      alert('Failed to save. Please try again.')
     }
-  };
-
-  const getCaptureCount = (cat: Category) => {
-    return activeCaptures.filter(c => c.category === cat).length;
-  };
-
-  if (!activeSession) return null;
+  }
 
   return (
-    <div className="flex-col h-full" style={{ paddingBottom: '20px' }}>
-      {/* Top Status */}
-      <header className="flex justify-between items-center mb-6 mt-2">
-        <div className="flex items-center gap-2 text-danger" style={{ fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.05em' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-danger)', animation: 'pulse 2s infinite' }}></div>
-          SERVICE IN PROGRESS
+    <div className="flex-col h-full bg-bg" style={{ minHeight: '100vh', padding: 'var(--space-lg)', position: 'relative' }}>
+      
+      {/* Header / Timer */}
+      <div className="flex justify-between items-center mb-xl mt-sm">
+        <div className="flex items-center gap-sm">
+          <div className="live-dot" />
+          <span className="font-bold tracking-widest text-sm" style={{ color: 'var(--color-danger)' }}>
+            LIVE
+          </span>
         </div>
-        <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '1.1rem' }}>
-          {duration}
+        <div className="text-2xl font-bold font-mono tracking-wider">
+          {formatTime(elapsed)}
         </div>
-      </header>
+      </div>
 
-      <section className="flex-1 flex-col">
-        <h1 className="text-center mb-8" style={{ fontSize: '1.75rem' }}>What is standing out to you?</h1>
+      <div className="text-center mb-xl">
+        <h2 className="text-3xl font-bold mb-xs">{activeSession.church_name || 'Sunday Service'}</h2>
+        <p className="text-2">{new Date(activeSession.start_time).toLocaleDateString()}</p>
+      </div>
 
-        {/* Capture Buttons */}
-        <div className="flex-col gap-4 mb-8">
-          {CAPTURE_BUTTONS.map(btn => (
-            <button 
-              key={btn.category}
-              className="card flex items-center justify-between"
-              style={{ padding: '16px 24px', margin: 0, cursor: 'pointer', transition: 'transform 0.1s', border: 'none', textAlign: 'left' }}
-              onClick={() => setActiveModal(btn.category)}
-            >
-              <div className="flex items-center gap-4">
-                <div style={{ color: 'var(--color-primary)' }}>{btn.icon}</div>
-                <div>
-                  <div style={{ fontWeight: 600, letterSpacing: '0.05em' }}>{btn.label}</div>
-                  <div className="text-secondary" style={{ fontSize: '0.85rem' }}>{btn.desc}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+      {/* Capture Grid */}
+      <div className="grid gap-md" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', marginBottom: 'var(--space-xl)' }}>
+        {(Object.entries(CATEGORY_CONFIG) as [Category, typeof CATEGORY_CONFIG[Category]][]).map(([key, config]) => (
+          <button
+            key={key}
+            className="card card-interactive flex-col items-center justify-center gap-sm"
+            style={{ padding: 'var(--space-xl) var(--space-md)', borderColor: config.color }}
+            onClick={() => setActiveModal(key)}
+          >
+            <div style={{ color: config.color }}>{config.icon}</div>
+            <span className="font-bold text-sm">{config.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Counters & Timeline toggle */}
-        <div className="card mb-8" style={{ padding: '16px' }}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 style={{ fontSize: '1rem', margin: 0 }}>Today's Captures</h3>
-            <button className="btn-ghost flex items-center gap-1" style={{ padding: '4px 8px', fontSize: '0.85rem' }} onClick={() => setShowTimeline(!showTimeline)}>
-              <List size={16} />
-              {showTimeline ? 'Hide Timeline' : 'View Timeline'}
-            </button>
+      {/* Timeline (Recent Captures) */}
+      <div className="flex-1">
+        <div className="section-header">Timeline</div>
+        {activeCaptures.length === 0 ? (
+          <div className="state-center text-3 py-xl">
+            <p className="text-sm">Tap a category above to capture a moment.</p>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-            <div className="text-center">
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getCaptureCount('insight')}</div>
-              <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Insight</div>
-            </div>
-            <div className="text-center">
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getCaptureCount('powerful_moment')}</div>
-              <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Powerful</div>
-            </div>
-            <div className="text-center">
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getCaptureCount('scripture')}</div>
-              <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Scripture</div>
-            </div>
-            <div className="text-center">
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getCaptureCount('question')}</div>
-              <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Question</div>
-            </div>
-            <div className="text-center">
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{getCaptureCount('action')}</div>
-              <div className="text-secondary" style={{ fontSize: '0.75rem' }}>Action</div>
-            </div>
-          </div>
-          
-          {showTimeline && activeCaptures.length > 0 && (
-            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-              {activeCaptures.map(capture => (
-                <div key={capture.id} className="mb-4">
-                  <div className="flex items-center gap-2 text-secondary mb-1" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                    <span>{new Date(activeSession.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'} as any)}</span>
-                    <span>•</span>
-                    <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{capture.category.replace('_', ' ')}</span>
+        ) : (
+          <div className="scroll-list">
+            {[...activeCaptures].sort((a, b) => b.timestamp_seconds - a.timestamp_seconds).map(capture => {
+              const config = CATEGORY_CONFIG[capture.category]
+              return (
+                <div key={capture.id} className="card py-sm px-md flex items-start gap-md">
+                  <div className="mt-xs" style={{ color: config.color }}>
+                    {config.icon}
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>"{capture.content}"</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-1">{capture.content}</p>
+                    <p className="text-xs text-3 mt-xs">{formatTime(capture.timestamp_seconds)}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Bottom Actions */}
-      <div className="mt-auto flex-col gap-4">
+      {/* End Service Button */}
+      <div className="sticky bottom-0 pt-lg pb-md" style={{ background: 'linear-gradient(to bottom, transparent, var(--color-bg) 30%)' }}>
         <button 
           className="btn btn-secondary w-full"
-          onClick={() => setActiveModal('insight')} // Assuming voice capture opens insight by default for MVP
+          onClick={() => navigate('/end')}
         >
-          <Mic size={20} />
-          Quick Voice Capture
-        </button>
-
-        <button 
-          className="btn btn-ghost w-full"
-          onClick={() => navigate('/end-service')}
-          style={{ color: 'var(--color-text-tertiary)', fontSize: '0.9rem' }}
-        >
-          END SERVICE
+          <StopCircle size={18} />
+          End Service
         </button>
       </div>
 
-      {activeModal && (
-        <QuickCaptureModal 
-          category={activeModal} 
-          onClose={() => setActiveModal(null)} 
-          onSave={handleSaveCapture} 
-        />
-      )}
+      {/* Capture Modal Overlay */}
+      <QuickCaptureModal 
+        category={activeModal}
+        onClose={() => setActiveModal(null)}
+        onSave={handleSaveCapture}
+      />
     </div>
-  );
-};
-
-export default ServiceMode;
+  )
+}

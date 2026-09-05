@@ -1,72 +1,39 @@
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-const EndService = () => {
-  const navigate = useNavigate();
-  const { activeCaptures, endSession } = useAppStore();
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, XCircle } from 'lucide-react'
+import { useAppStore } from '../store'
 
-  const getCaptureCount = (category: string) => {
-    return activeCaptures.filter(c => c.category === category).length;
-  };
+export default function EndService() {
+  const navigate = useNavigate()
+  const { activeSession, activeCaptures, endSession } = useAppStore()
 
-  const handleContinue = () => {
-    endSession();
-    navigate('/sermon-input');
-  };
+  if (!activeSession) {
+    navigate('/')
+    return null
+  }
+
+  const handleEnd = () => {
+    endSession()
+    navigate('/sermon-input')
+  }
 
   return (
-    <div className="flex-col h-full items-center justify-center text-center">
-      <header className="mb-8 w-full">
-        <h1 className="mb-2">Service Complete?</h1>
-      </header>
-
-      <section className="card w-full mb-8 text-left">
-        <h3 className="mb-4" style={{ fontSize: '1.1rem' }}>Today's Summary</h3>
-        <div className="flex-col gap-3">
-          <div className="flex justify-between">
-            <span className="text-secondary">Insights</span>
-            <span style={{ fontWeight: 600 }}>{getCaptureCount('insight')}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Powerful Moments</span>
-            <span style={{ fontWeight: 600 }}>{getCaptureCount('powerful_moment')}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Scriptures</span>
-            <span style={{ fontWeight: 600 }}>{getCaptureCount('scripture')}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Questions</span>
-            <span style={{ fontWeight: 600 }}>{getCaptureCount('question')}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-secondary">Actions</span>
-            <span style={{ fontWeight: 600 }}>{getCaptureCount('action')}</span>
-          </div>
-        </div>
-      </section>
-
-      <div className="mb-8">
-        <p style={{ fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>
-          Are you ready to reflect on today's experience?
-        </p>
+    <div className="animate-fade-in flex-col h-full items-center justify-center text-center px-lg">
+      <div className="mb-xl">
+        <h1 className="mb-sm">End Service?</h1>
+        <p className="text-2">You've captured {activeCaptures.length} moments.</p>
+        <p className="text-2 mt-xs">Are you ready to process this session?</p>
       </div>
 
-      <div className="mt-auto w-full flex-col gap-4">
-        <button 
-          className="btn btn-primary w-full"
-          onClick={handleContinue}
-        >
-          YES, CONTINUE
+      <div className="flex-col gap-md w-full max-w-sm">
+        <button className="btn btn-primary" onClick={handleEnd}>
+          <CheckCircle size={18} />
+          Yes, End Service
         </button>
-        <button 
-          className="btn btn-ghost w-full"
-          onClick={() => navigate('/service')}
-        >
-          RETURN TO SERVICE
+        <button className="btn btn-ghost" onClick={() => navigate(-1)}>
+          <XCircle size={18} />
+          Cancel, return to service
         </button>
       </div>
     </div>
-  );
-};
-
-export default EndService;
+  )
+}

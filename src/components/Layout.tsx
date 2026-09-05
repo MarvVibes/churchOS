@@ -1,45 +1,39 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Compass, User } from 'lucide-react';
+import { Outlet, NavLink } from 'react-router-dom'
+import { Home, BookOpen, User } from 'lucide-react'
 
-const Layout = () => {
-  const location = useLocation();
-  
-  // Hide bottom nav on specific screens like Service Mode or Quick Capture
-  const hideBottomNav = location.pathname.includes('/service') || location.pathname.includes('/sermon-input');
-
+export default function Layout() {
   return (
-    <div className="app-container">
-      <div className="screen-container">
+    <div className="app-shell">
+      <main className="screen">
         <Outlet />
-      </div>
+      </main>
 
-      {!hideBottomNav && (
-        <nav className="bottom-nav">
-          <NavLink 
-            to="/" 
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <Home size={24} />
-            <span>Home</span>
-          </NavLink>
-          <NavLink 
-            to="/journey" 
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <Compass size={24} />
-            <span>Journey</span>
-          </NavLink>
-          <NavLink 
-            to="/profile" 
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-          >
-            <User size={24} />
-            <span>Profile</span>
-          </NavLink>
-        </nav>
-      )}
+      <nav className="bottom-nav">
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Home size={22} />
+          Home
+        </NavLink>
+
+        <NavLink
+          to="/journey"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <BookOpen size={22} />
+          Journey
+        </NavLink>
+
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <User size={22} />
+          Profile
+        </NavLink>
+      </nav>
     </div>
-  );
-};
-
-export default Layout;
+  )
+}

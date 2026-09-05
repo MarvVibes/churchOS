@@ -1,64 +1,43 @@
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { User, Settings, Shield, LogOut } from 'lucide-react'
 
-const Profile = () => {
-  const navigate = useNavigate();
-  const { clearSession } = useAppStore();
-
-  const handleClearDemoData = async () => {
-    if (confirm('Are you sure you want to delete all demo data?')) {
-      const MOCK_USER_ID = 'mock-user-123';
-      try {
-        await supabase.from('service_sessions').delete().eq('user_id', MOCK_USER_ID);
-        clearSession();
-        navigate('/');
-      } catch (err) {
-        console.error('Failed to clear data', err);
-      }
-    }
-  };
-
+export default function Profile() {
   return (
-    <div className="flex-col h-full">
-      <header className="mb-6 mt-4">
-        <h1 className="mb-2">Profile</h1>
-      </header>
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header">
+        <p className="subtitle">Settings</p>
+        <h1>Profile</h1>
+      </div>
 
-      <section className="flex-1 overflow-y-auto">
-        <div className="card text-center mb-6" style={{ padding: '32px 16px' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--color-border)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>
-            👤
+      <div className="flex-col gap-xl">
+        <div className="flex items-center gap-md">
+          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white">
+            <User size={32} />
           </div>
-          <h2 style={{ fontSize: '1.25rem', marginBottom: '4px' }}>Alex</h2>
-          <p className="text-secondary">alex@example.com</p>
-        </div>
-
-        <div className="mb-6">
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Settings</h3>
-          <div className="card flex-col gap-4" style={{ padding: '16px' }}>
-            <button className="btn btn-secondary w-full justify-between" style={{ padding: '12px 16px' }}>
-              <span>Notifications</span>
-              <span className="text-secondary">On</span>
-            </button>
-            <button className="btn btn-secondary w-full justify-between" style={{ padding: '12px 16px' }}>
-              <span>Theme</span>
-              <span className="text-secondary">System</span>
-            </button>
+          <div>
+            <h2 className="text-xl">Believer</h2>
+            <p className="text-sm text-2">Joined Sept 2026</p>
           </div>
         </div>
 
-        <div className="mb-6">
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', color: 'var(--color-danger)' }}>Danger Zone</h3>
-          <div className="card flex-col gap-4" style={{ padding: '16px', borderColor: 'var(--color-danger)' }}>
-            <button className="btn w-full" style={{ backgroundColor: 'var(--color-danger)', color: 'white' }} onClick={handleClearDemoData}>
-              Clear All Demo Data
-            </button>
-          </div>
+        <div className="flex-col gap-sm">
+          <div className="section-header">Account</div>
+          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left">
+            <Settings size={18} className="text-3" />
+            <span className="font-medium text-sm text-1">App Settings</span>
+          </button>
+          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left">
+            <Shield size={18} className="text-3" />
+            <span className="font-medium text-sm text-1">Privacy & Data</span>
+          </button>
         </div>
-      </section>
+
+        <div className="flex-col gap-sm mt-md">
+          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left" style={{ borderColor: 'var(--color-danger)' }}>
+            <LogOut size={18} className="text-danger" />
+            <span className="font-medium text-sm text-danger">Sign Out</span>
+          </button>
+        </div>
+      </div>
     </div>
-  );
-};
-
-export default Profile;
+  )
+}

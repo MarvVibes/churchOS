@@ -9,26 +9,6 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      users: {
-        Row: {
-          id: string
-          name: string | null
-          email: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name?: string | null
-          email?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string | null
-          email?: string | null
-          created_at?: string
-        }
-      }
       service_sessions: {
         Row: {
           id: string
@@ -132,7 +112,6 @@ export interface Database {
           title: string | null
           preacher: string | null
           church: string | null
-          audio_url: string | null
           transcript: string | null
           source_type: 'audio' | 'text' | 'notes'
           created_at: string
@@ -143,7 +122,6 @@ export interface Database {
           title?: string | null
           preacher?: string | null
           church?: string | null
-          audio_url?: string | null
           transcript?: string | null
           source_type: 'audio' | 'text' | 'notes'
           created_at?: string
@@ -154,7 +132,6 @@ export interface Database {
           title?: string | null
           preacher?: string | null
           church?: string | null
-          audio_url?: string | null
           transcript?: string | null
           source_type?: 'audio' | 'text' | 'notes'
           created_at?: string

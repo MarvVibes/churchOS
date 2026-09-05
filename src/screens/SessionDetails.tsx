@@ -1,113 +1,115 @@
-import { useEffect, useState  } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { format } from 'date-fns';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, MapPin, Calendar, Network } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import type { Database } from '../types/supabase'
 
-const SessionDetails = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [data, setData] = useState<any>({ isLoading: true });
+type ServiceSession = Database['public']['Tables']['service_sessions']['Row']
+type SermonAnalysis = Database['public']['Tables']['sermon_analysis']['Row']
+type ActionCommitment = Database['public']['Tables']['action_commitments']['Row']
+
+export default function SessionDetails() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  
+  const [session, setSession] = useState<ServiceSession | null>(null)
+  const [analysis, setAnalysis] = useState<SermonAnalysis | null>(null)
+  const [action, setAction] = useState<ActionCommitment | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchAllData = async () => {
-      if (!id) return;
-      
-      const [sessionRes, analysisRes, intentionRes, reflectionRes, commitmentRes, capturesRes] = await Promise.all([
+    if (!id) return
+
+    const fetchData = async () => {
+      const [sessionRes, analysisRes, actionRes] = await Promise.all([
         supabase.from('service_sessions').select('*').eq('id', id).single(),
         supabase.from('sermon_analysis').select('*').eq('session_id', id).single(),
-        supabase.from('intentions').select('*').eq('session_id', id).single(),
-        supabase.from('reflections').select('*').eq('session_id', id).single(),
         supabase.from('action_commitments').select('*').eq('session_id', id).single(),
-        supabase.from('captured_moments').select('*').eq('session_id', id)
-      ]);
+      ])
 
-      setData({
-        isLoading: false,
-        session: sessionRes.data,
-        analysis: analysisRes.data,
-        intention: intentionRes.data,
-        reflection: reflectionRes.data,
-        commitment: commitmentRes.data,
-        captures: capturesRes.data || []
-      });
-    };
+      if (sessionRes.data) setSession(sessionRes.data)
+      if (analysisRes.data) setAnalysis(analysisRes.data)
+      if (actionRes.data) setAction(actionRes.data)
 
-    fetchAllData();
-  }, [id]);
+      setIsLoading(false)
+    }
 
-  if (data.isLoading) return <div className="flex justify-center items-center h-full">Loading details...</div>;
-  if (!data.session) return <div className="flex justify-center items-center h-full">Session not found.</div>;
+    fetchData()
+  }, [id])
+
+  if (isLoading) {
+    return <div className="state-center text-3 h-full"><p>Loading details...</p></div>
+  }
+
+  if (!session) {
+    return <div className="state-center text-3 h-full"><p>Session not found.</p></div>
+  }
+
+  const date = new Date(session.start_time).toLocaleDateString('en-US', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  })
 
   return (
-    <div className="flex-col h-full">
-      <header className="mb-6 flex items-center gap-4 mt-2">
-        <button className="btn-ghost" style={{ padding: '8px' }} onClick={() => navigate(-1)}>
-          <ArrowLeft size={24} />
+    <div className="animate-fade-in flex-col h-full bg-surface" style={{ minHeight: '100vh', margin: '-var(--space-lg)', padding: 'var(--space-lg)' }}>
+      
+      <div className="flex items-center gap-md mb-xl mt-sm">
+        <button className="btn-icon" onClick={() => navigate(-1)}>
+          <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="mb-1" style={{ fontSize: '1.25rem' }}>{data.session.sermon_title || 'Session Details'}</h1>
-          <div className="text-secondary" style={{ fontSize: '0.85rem' }}>
-            {format(new Date(data.session.date), 'MMMM d, yyyy')}
+          <h2 className="text-lg leading-tight">{session.sermon_title || 'Sunday Service'}</h2>
+          <p className="text-xs text-3 tracking-widest uppercase mt-xs">{date}</p>
+        </div>
+      </div>
+
+      <div className="flex-col gap-lg pb-xl">
+        
+        <div className="card flex items-center gap-md">
+          <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-primary">
+            <MapPin size={20} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">{session.church_name || 'Church'}</p>
+            <p className="text-xs text-2">{session.preacher_name || 'Preacher'}</p>
           </div>
         </div>
-      </header>
 
-      <section className="flex-1 overflow-y-auto" style={{ paddingRight: '4px', marginRight: '-4px' }}>
-        
-        {data.analysis && (
-          <div className="card mb-6" style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)', border: 'none' }}>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{data.analysis.main_theme}</h2>
-            <p style={{ margin: 0, opacity: 0.9 }}>{data.analysis.one_sentence_summary}</p>
+        {analysis && (
+          <div className="card card-primary">
+            <p className="text-xs font-bold tracking-widest uppercase mb-xs opacity-70">Theme</p>
+            <h3 className="mb-sm">{analysis.main_theme}</h3>
+            <p className="text-sm opacity-90">{analysis.one_sentence_summary}</p>
           </div>
         )}
 
-        {data.commitment && (
-          <div className="mb-6">
-            <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: '8px' }}>Action Commitment</h3>
-            <div className="card">
-              <div style={{ fontSize: '1.1rem', fontWeight: 500, marginBottom: '8px' }}>{data.commitment.action}</div>
-              <div className="flex justify-between items-center text-secondary text-sm">
-                <span>By: {data.commitment.deadline}</span>
-                <span style={{ color: data.commitment.status === 'completed' ? 'var(--color-success)' : 'inherit' }}>
-                  {data.commitment.status.toUpperCase()}
-                </span>
-              </div>
+        {action && (
+          <div>
+            <div className="flex items-center gap-sm mb-sm">
+              <Calendar size={18} className="text-success" />
+              <h3 className="text-sm font-bold uppercase tracking-widest text-3">Action Commitment</h3>
+            </div>
+            <div className={`card ${action.status === 'completed' ? 'border-success' : 'border-border'}`}>
+              <p className="text-sm">{action.action}</p>
+              {action.deadline && (
+                <p className="text-xs text-2 mt-sm">
+                  Target: {new Date(action.deadline).toLocaleDateString()}
+                </p>
+              )}
             </div>
           </div>
         )}
 
-        {data.captures.length > 0 && (
-          <div className="mb-6">
-            <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>Captured Moments ({data.captures.length})</h3>
-            <div className="flex-col gap-3">
-              {data.captures.map((cap: any) => (
-                <div key={cap.id} className="card" style={{ padding: '12px 16px', margin: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, marginBottom: '4px' }}>
-                    {cap.category.replace('_', ' ').toUpperCase()}
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>{cap.content}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        {analysis && (
+          <button 
+            className="btn btn-secondary mt-md"
+            onClick={() => navigate('/map')}
+          >
+            <Network size={18} />
+            View Revelation Map
+          </button>
         )}
 
-        {data.reflection && (
-          <div className="mb-6">
-            <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>Personal Reflection</h3>
-            <div className="card" style={{ padding: '16px', margin: 0 }}>
-              <div style={{ fontWeight: 500, marginBottom: '4px', fontSize: '0.9rem' }}>What stood out:</div>
-              <p style={{ fontSize: '0.95rem', marginBottom: '16px' }}>{data.reflection.personal_takeaway}</p>
-              
-              <div style={{ fontWeight: 500, marginBottom: '4px', fontSize: '0.9rem' }}>Application:</div>
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>{data.reflection.potential_change}</p>
-            </div>
-          </div>
-        )}
-      </section>
+      </div>
     </div>
-  );
-};
-
-export default SessionDetails;
+  )
+}

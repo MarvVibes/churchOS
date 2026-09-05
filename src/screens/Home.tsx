@@ -1,125 +1,97 @@
-import { useEffect, useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { fetchRecentSessions, generateDemoDataIfNeeded } from '../lib/services';
-import type { Database } from '../types/supabase';
-import { format } from 'date-fns';
-import { Clock } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Play, Calendar, MapPin, Search } from 'lucide-react'
+import { useAppStore } from '../store'
+import { fetchRecentSessions, MOCK_USER_ID } from '../lib/services'
+import type { Database } from '../types/supabase'
 
-type ServiceSession = Database['public']['Tables']['service_sessions']['Row'];
+type ServiceSession = Database['public']['Tables']['service_sessions']['Row']
 
-const MOCK_USER_ID = 'mock-user-123'; // In a real app, this comes from auth
-
-const Home = () => {
-  const navigate = useNavigate();
-  const { activeSession } = useAppStore();
-  const [recentSessions, setRecentSessions] = useState<ServiceSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [duration, setDuration] = useState('00:00');
+export default function Home() {
+  const navigate = useNavigate()
+  const { activeSession } = useAppStore()
+  
+  const [recentSessions, setRecentSessions] = useState<ServiceSession[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loadData = async () => {
-      await generateDemoDataIfNeeded(MOCK_USER_ID);
-      const sessions = await fetchRecentSessions(MOCK_USER_ID);
-      setRecentSessions(sessions);
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (activeSession && activeSession.status === 'in_progress') {
-      const interval = setInterval(() => {
-        const start = new Date(activeSession.start_time).getTime();
-        const now = Date.now();
-        const diff = Math.floor((now - start) / 1000);
-        
-        const hours = Math.floor(diff / 3600);
-        const minutes = Math.floor((diff % 3600) / 60);
-        const seconds = diff % 60;
-        
-        if (hours > 0) {
-          setDuration(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        } else {
-          setDuration(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        }
-      }, 1000);
-      return () => clearInterval(interval);
+    async function loadSessions() {
+      setIsLoading(true)
+      const data = await fetchRecentSessions(MOCK_USER_ID)
+      setRecentSessions(data)
+      setIsLoading(false)
     }
-  }, [activeSession]);
+    loadSessions()
+  }, [])
 
   return (
-    <div className="home-container">
-      <header className="mb-6">
-        <p className="text-secondary" style={{ fontSize: '0.9rem', marginBottom: '4px' }}>Sunday OS</p>
-        <h1>Good morning, Alex</h1>
-        <p>Every message is an opportunity for transformation.</p>
-      </header>
+    <div className="animate-fade-in">
+      <div className="page-header">
+        <p className="subtitle">Church OS</p>
+        <h1>Welcome Back</h1>
+        <p className="mt-2">Your spiritual journey, captured and connected.</p>
+      </div>
 
-      {activeSession && activeSession.status === 'in_progress' ? (
-        <section className="mb-6">
-          <div className="card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Your service is in progress</h2>
-            <div className="flex items-center gap-2 mb-4 text-secondary">
-              <Clock size={16} />
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{duration}</span>
+      {activeSession && (
+        <div 
+          className="card card-primary card-interactive mb-lg"
+          onClick={() => navigate('/service')}
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="label-xs mb-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>Active Session</p>
+              <h3>Resume Service</h3>
             </div>
-            <button 
-              className="btn btn-primary w-full"
-              onClick={() => navigate('/service')}
-            >
-              CONTINUE SERVICE
-            </button>
+            <div className="live-dot" />
           </div>
-        </section>
-      ) : (
-        <section className="mb-6">
-          <div className="card" style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)' }}>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px', color: 'inherit' }}>Ready for today's service?</h2>
-            <p style={{ color: 'rgba(255,255,255,0.8)' }}>Prepare your heart. Capture what matters. Live what you learn.</p>
-            <button 
-              className="btn w-full mt-4" 
-              style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-primary)' }}
-              onClick={() => navigate('/start-session')}
-            >
-              START MY SUNDAY
-            </button>
-          </div>
-        </section>
+        </div>
       )}
 
-      <section>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Recent Journey</h2>
-        {isLoading ? (
-          <p>Loading journey...</p>
-        ) : recentSessions.length > 0 ? (
-          <div className="flex-col gap-4">
-            {recentSessions.map(session => (
-              <div 
-                key={session.id} 
-                className="card" 
-                style={{ padding: '16px', cursor: 'pointer', marginBottom: '12px' }}
-                onClick={() => navigate(`/session/${session.id}`)}
-              >
-                <div className="text-secondary" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                  {format(new Date(session.date), 'MMMM d')}
-                </div>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>{session.sermon_title || 'Untitled Sermon'}</h3>
-                <div className="text-secondary" style={{ fontSize: '0.9rem' }}>
-                  {session.status === 'completed' ? 'Completed' : 'In Progress'}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card text-center" style={{ padding: '32px 16px' }}>
-            <p>You have not completed a Sunday session yet.</p>
-            <p style={{ fontSize: '0.9rem' }}>Your journey begins with your next message.</p>
-          </div>
-        )}
-      </section>
-    </div>
-  );
-};
+      {!activeSession && (
+        <button 
+          className="btn btn-primary mb-xl"
+          onClick={() => navigate('/start')}
+        >
+          <Play size={18} />
+          Start My Sunday
+        </button>
+      )}
 
-export default Home;
+      <div className="section-header">Recent Sundays</div>
+      
+      {isLoading ? (
+        <div className="state-center text-3">
+          <Search className="mb-sm animate-pulse" size={32} />
+          <p>Loading your journey...</p>
+        </div>
+      ) : recentSessions.length > 0 ? (
+        <div className="scroll-list">
+          {recentSessions.map(session => (
+            <div 
+              key={session.id} 
+              className="card card-interactive"
+              onClick={() => navigate(`/journey/${session.id}`)}
+            >
+              <div className="flex justify-between items-center mb-sm">
+                <h3 className="font-bold">{session.sermon_title || 'Sunday Service'}</h3>
+                <span className="label-xs text-3">
+                  {new Date(session.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              <div className="flex items-center gap-sm text-2 text-sm">
+                <MapPin size={14} />
+                <span>{session.church_name || 'Church'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="state-center text-3">
+          <Calendar className="mb-sm opacity-50" size={32} />
+          <p>No recorded sessions yet.</p>
+          <p className="text-sm mt-xs">Start a session to begin tracking.</p>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,118 +1,129 @@
-import { useState  } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { createSession } from '../lib/services';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { ArrowLeft, Play } from 'lucide-react'
+import { createSession, MOCK_USER_ID } from '../lib/services'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
 
-const PRESENCE_OPTIONS = [
-  'Fully Present',
-  'Open-Minded',
-  'Reflective',
-  'Ready to Act'
-];
+const INTENTIONS = [
+  'Listen actively', 'Take notes', 'Be present', 
+  'Pray for others', 'Worship freely'
+]
 
-const MOCK_USER_ID = 'mock-user-123'; // Real app uses auth
-
-const SetIntention = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { startSession } = useAppStore();
+export default function SetIntention() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { startSession } = useAppStore()
   
-  const previousState = location.state as { selectedNeeds: string[], mindContext: string } | null;
+  const { selectedNeeds, context } = location.state || { selectedNeeds: [], context: '' }
   
-  const [desiredOutcome, setDesiredOutcome] = useState('');
-  const [presenceIntentions, setPresenceIntentions] = useState<string[]>([]);
-  const [isStarting, setIsStarting] = useState(false);
+  const [outcome, setOutcome] = useState('')
+  const [selectedIntentions, setSelectedIntentions] = useState<string[]>([])
+  const [isStarting, setIsStarting] = useState(false)
 
-  const togglePresence = (presence: string) => {
-    setPresenceIntentions(prev => 
-      prev.includes(presence) ? prev.filter(p => p !== presence) : [...prev, presence]
-    );
-  };
+  const toggleIntention = (intention: string) => {
+    setSelectedIntentions(prev => 
+      prev.includes(intention) 
+        ? prev.filter(i => i !== intention)
+        : [...prev, intention]
+    )
+  }
 
-  const handleEnterService = async () => {
-    setIsStarting(true);
+  const handleStart = async () => {
+    setIsStarting(true)
     try {
-      // 1. Create the session in Supabase (or mock)
-      const newSession = await createSession({
+      // 1. Create the session
+      const session = await createSession({
         user_id: MOCK_USER_ID,
-        date: new Date().toISOString(),
-        church_name: null,
-        preacher_name: null,
-        sermon_title: null,
         start_time: new Date().toISOString(),
-        end_time: null,
         status: 'in_progress',
-      } as any);
+        // Optional mock data for development until we build the real input screen
+        church_name: 'Sunday Service', 
+      })
 
-      // 2. Save intentions
-      await supabase.from('intentions').insert({
-        session_id: newSession.id,
-        selected_needs: previousState?.selectedNeeds || [],
-        personal_context: previousState?.mindContext || null,
-        desired_outcome: desiredOutcome,
-        presence_intentions: presenceIntentions
-      } as any);
+      // 2. Save the intentions
+      const { error } = await supabase.from('intentions').insert({
+        session_id: session.id,
+        selected_needs: selectedNeeds,
+        personal_context: context || null,
+        desired_outcome: outcome || null,
+        presence_intentions: selectedIntentions
+      })
 
-      // 3. Update global state
-      startSession(newSession);
+      if (error) throw error
 
-      // 4. Navigate
-      navigate('/service', { replace: true } as any);
+      // 3. Update local state and navigate
+      startSession(session)
+      navigate('/service')
+
     } catch (err) {
-      console.error('Failed to start session', err);
-      setIsStarting(false);
+      console.error('Failed to start session:', err)
+      alert('Failed to start session. Please check your connection and try again.')
+    } finally {
+      setIsStarting(false)
     }
-  };
+  }
 
   return (
-    <div className="flex-col h-full">
-      <header className="mb-6 mt-4">
-        <h1 className="mb-2">Set Your Intention</h1>
-      </header>
-
-      <section className="flex-1">
-        <div className="input-group">
-          <label className="input-label" style={{ fontSize: '1.1rem', marginBottom: '12px' }}>
-            By the end of today's service, what would make you say, "That was exactly what I needed?"
-          </label>
-          <textarea 
-            className="input-field" 
-            placeholder="I want clarity about what I should focus on this week."
-            value={desiredOutcome}
-            onChange={(e) => setDesiredOutcome(e.target.value)}
-          />
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header flex items-center gap-md">
+        <button className="btn-icon" onClick={() => navigate(-1)}>
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <p className="subtitle">Step 2 of 2</p>
+          <h1>Set Your Intention</h1>
         </div>
+      </div>
 
-        <div className="mb-8 mt-8">
-          <label className="input-label mb-4" style={{ fontSize: '1.1rem' }}>
-            How do you want to show up today?
-          </label>
-          <div className="selectable-list">
-            {PRESENCE_OPTIONS.map(opt => (
-              <button
-                key={opt}
-                className={`selectable-pill ${presenceIntentions.includes(opt) ? 'selected' : ''}`}
-                onClick={() => togglePresence(opt)}
-              >
-                {opt}
-              </button>
-            ))}
+      <div className="flex-col gap-xl flex-1">
+        <section>
+          <div className="input-group">
+            <label className="input-label">What do you hope to get out of today?</label>
+            <textarea 
+              className="input-field" 
+              rows={3}
+              placeholder="E.g., I want to hear God clearly on..."
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+            />
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div className="mt-auto pt-4">
+        <section>
+          <div className="input-group">
+            <label className="input-label">How will you be present?</label>
+            <div className="pill-group">
+              {INTENTIONS.map(intention => (
+                <button
+                  key={intention}
+                  className={`pill ${selectedIntentions.includes(intention) ? 'selected' : ''}`}
+                  onClick={() => toggleIntention(intention)}
+                >
+                  {intention}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="cta-bar mt-auto">
         <button 
-          className="btn btn-primary w-full"
-          onClick={handleEnterService}
-          disabled={desiredOutcome.trim() === '' || presenceIntentions.length === 0 || isStarting}
+          className="btn btn-primary"
+          onClick={handleStart}
+          disabled={isStarting}
         >
-          {isStarting ? 'STARTING...' : 'ENTER SERVICE MODE'}
+          {isStarting ? (
+            'Preparing...'
+          ) : (
+            <>
+              Enter Service
+              <Play size={18} />
+            </>
+          )}
         </button>
       </div>
     </div>
-  );
-};
-
-export default SetIntention;
+  )
+}

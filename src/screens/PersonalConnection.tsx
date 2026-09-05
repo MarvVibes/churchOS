@@ -1,82 +1,92 @@
-import { useEffect, useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import type { Database } from '../types/supabase';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, Target } from 'lucide-react'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
 
-type Intention = Database['public']['Tables']['intentions']['Row'];
-
-const PersonalConnection = () => {
-  const navigate = useNavigate();
-  const { activeSession } = useAppStore();
-  const [intention, setIntention] = useState<Intention | null>(null);
+export default function PersonalConnection() {
+  const navigate = useNavigate()
+  const { activeSession } = useAppStore()
+  
+  const [initialNeeds, setInitialNeeds] = useState<string[]>([])
+  const [connection, setConnection] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    const fetchIntention = async () => {
-      if (!activeSession) return;
+    if (!activeSession) {
+      navigate('/')
+      return
+    }
+
+    const fetchIntentions = async () => {
       const { data } = await supabase
         .from('intentions')
-        .select('*')
+        .select('selected_needs')
         .eq('session_id', activeSession.id)
-        .single();
-      
-      if (data) setIntention(data);
-    };
-    fetchIntention();
-  }, [activeSession]);
+        .single()
+        
+      if (data && data.selected_needs) {
+        setInitialNeeds(data.selected_needs)
+      }
+    }
+
+    fetchIntentions()
+  }, [activeSession, navigate])
+
+  const handleSubmit = async () => {
+    // In a full implementation, we'd save this 'connection' to a connections table or append to reflections.
+    // For now, we just pass to the next step since it's a qualitative exercise.
+    navigate('/action')
+  }
 
   return (
-    <div className="flex-col h-full" style={{ paddingBottom: '20px' }}>
-      <header className="mb-8 mt-4 text-center">
-        <h1 style={{ fontSize: '1.75rem', marginBottom: '16px' }}>What This Could Mean For You</h1>
-      </header>
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header">
+        <p className="subtitle">Step 3 of 3</p>
+        <h1>Connect to Life</h1>
+      </div>
 
-      <section className="flex-1 overflow-y-auto" style={{ paddingRight: '4px', marginRight: '-4px' }}>
+      <div className="flex-col gap-xl flex-1">
         
-        <div className="mb-8">
-          <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
-            You Came Looking For
-          </h3>
-          <p style={{ fontSize: '1.1rem', color: 'var(--color-text-primary)' }}>
-            "{intention?.desired_outcome || 'I want clarity about what I should focus on this week.'}"
-          </p>
-        </div>
-
-        <div className="mb-8">
-          <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: '8px' }}>
-            A Pattern Worth Noticing
-          </h3>
-          <div className="card" style={{ backgroundColor: 'var(--color-accent-soft)', border: 'none' }}>
-            <p style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.6 }}>
-              Several moments you captured focused on movement, delayed action, and obedience before certainty.
-            </p>
+        {initialNeeds.length > 0 && (
+          <div className="card bg-surface-2 border-primary-dim">
+            <div className="flex items-center gap-sm mb-sm text-primary">
+              <Target size={18} />
+              <h3 className="text-sm">You came seeking:</h3>
+            </div>
+            <div className="flex flex-wrap gap-xs">
+              {initialNeeds.map(need => (
+                <span key={need} className="label-sm font-bold text-1 bg-surface py-xs px-sm rounded-md border border-border">
+                  {need}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="mb-8">
-          <h3 style={{ fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: '8px' }}>
-            A Possible Connection
-          </h3>
-          <p style={{ lineHeight: 1.6 }}>
-            You came seeking clarity about your next step. A recurring theme in the message was that clarity sometimes develops through movement rather than waiting for complete certainty.
-          </p>
-          <p style={{ lineHeight: 1.6, marginTop: '16px' }}>
-            This reflection is based on your notes and today's message. Only you can determine how it applies to your life.
-          </p>
-        </div>
+        <section className="input-group">
+          <label className="input-label">How did today's message speak directly to what you were seeking?</label>
+          <textarea 
+            className="input-field" 
+            rows={5}
+            placeholder="Write your thoughts..."
+            value={connection}
+            onChange={(e) => setConnection(e.target.value)}
+          />
+        </section>
 
-      </section>
+      </div>
 
-      <div className="mt-4 pt-4 bg-background">
+      <div className="cta-bar mt-auto">
         <button 
-          className="btn btn-primary w-full"
-          onClick={() => navigate('/commitment')}
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={isSubmitting || connection.trim().length === 0}
         >
-          CHOOSE YOUR ACTION
+          {isSubmitting ? 'Saving...' : 'Set Action Item'}
+          {!isSubmitting && <ArrowRight size={18} />}
         </button>
       </div>
     </div>
-  );
-};
-
-export default PersonalConnection;
+  )
+}

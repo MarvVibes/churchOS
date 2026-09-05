@@ -1,121 +1,113 @@
-import { useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import { Calendar } from 'lucide-react';
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CheckSquare, ArrowRight } from 'lucide-react'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
+import { addDays, format } from 'date-fns'
 
-const DEADLINE_OPTIONS = ['Tomorrow', 'This Week'];
+const TIMEFRAMES = [
+  { label: 'Today', days: 0 },
+  { label: 'Tomorrow', days: 1 },
+  { label: 'By Wednesday', days: 3 },
+  { label: 'By Next Sunday', days: 7 }
+]
 
-const ActionCommitment = () => {
-  const navigate = useNavigate();
-  const { activeSession } = useAppStore();
+export default function ActionCommitment() {
+  const navigate = useNavigate()
+  const { activeSession } = useAppStore()
+  
+  const [action, setAction] = useState('')
+  const [selectedTimeframe, setSelectedTimeframe] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [action, setAction] = useState('');
-  const [deadline, setDeadline] = useState('This Week');
-  const [reason, setReason] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  if (!activeSession) {
+    navigate('/')
+    return null
+  }
 
-  const handleCommit = async () => {
-    if (!activeSession) return;
-    setIsSubmitting(true);
-
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
     try {
-      await supabase.from('action_commitments').insert({
-        session_id: activeSession.id,
-        action,
-        deadline,
-        reason: reason || null,
-        status: 'pending'
-      } as any);
-      navigate('/final-report');
-    } catch (err) {
-      console.error('Failed to save commitment', err);
-      setIsSubmitting(false);
-    }
-  };
+      let deadline = null
+      if (selectedTimeframe !== null) {
+        deadline = addDays(new Date(), selectedTimeframe).toISOString()
+      }
 
-  const isFormValid = action.trim() !== '';
+      await supabase
+        .from('action_commitments')
+        .insert({
+          session_id: activeSession.id,
+          action: action.trim(),
+          deadline: deadline,
+          status: 'pending'
+        })
+
+      navigate('/final-report')
+    } catch (err) {
+      console.error('Failed to save action:', err)
+      alert('Failed to save. Please try again.')
+      setIsSubmitting(false)
+    }
+  }
+
+  const isComplete = action.trim().length > 0 && selectedTimeframe !== null
 
   return (
-    <div className="flex-col h-full" style={{ paddingBottom: '20px' }}>
-      <header className="mb-6 mt-4">
-        <h1 className="mb-2" style={{ fontSize: '1.75rem' }}>Don't Leave With Just Notes</h1>
-        <p>What is one thing you will actually do?</p>
-      </header>
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header">
+        <p className="subtitle">Final Step</p>
+        <h1>Action Commitment</h1>
+        <p className="mt-2 text-2">Faith without works is dead. What is one specific thing you will do?</p>
+      </div>
 
-      <section className="flex-1 overflow-y-auto" style={{ paddingRight: '4px', marginRight: '-4px' }}>
-        <div className="input-group mb-6">
-          <label className="input-label" style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>MY ONE ACTION</label>
+      <div className="flex-col gap-xl flex-1">
+        
+        <section className="input-group">
+          <label className="input-label flex items-center gap-xs text-success">
+            <CheckSquare size={16} /> I commit to...
+          </label>
           <textarea 
             className="input-field" 
-            style={{ minHeight: '80px', fontSize: '1.25rem', fontWeight: 500 }}
-            placeholder="Complete and publish my proposal."
+            rows={3}
+            placeholder="e.g., Have that difficult conversation with my brother."
             value={action}
             onChange={(e) => setAction(e.target.value)}
           />
-        </div>
+        </section>
 
-        <div className="mb-6">
-          <label className="input-label mb-4" style={{ fontSize: '1.1rem' }}>When will you do it?</label>
-          <div className="selectable-list">
-            {DEADLINE_OPTIONS.map(opt => (
+        <section className="input-group mt-md">
+          <label className="input-label">By when?</label>
+          <div className="pill-group">
+            {TIMEFRAMES.map((tf, idx) => (
               <button
-                key={opt}
-                className={`selectable-pill ${deadline === opt ? 'selected' : ''}`}
-                onClick={() => setDeadline(opt)}
+                key={idx}
+                className={`pill ${selectedTimeframe === tf.days ? 'selected' : ''}`}
+                onClick={() => setSelectedTimeframe(tf.days)}
               >
-                {opt}
+                {tf.label}
+                {selectedTimeframe === tf.days && (
+                  <span className="block text-xs opacity-70 mt-xs">
+                    {format(addDays(new Date(), tf.days), 'MMM d')}
+                  </span>
+                )}
               </button>
             ))}
-            <button
-              className={`selectable-pill flex items-center gap-2 ${!DEADLINE_OPTIONS.includes(deadline) ? 'selected' : ''}`}
-              onClick={() => {
-                const date = prompt('Enter a date (e.g., Oct 15):');
-                if (date) setDeadline(date);
-              }}
-            >
-              <Calendar size={16} />
-              Choose Date
-            </button>
           </div>
-        </div>
+        </section>
 
-        <div className="input-group mb-8">
-          <label className="input-label" style={{ fontSize: '1.1rem' }}>Why does this matter? (Optional)</label>
-          <textarea 
-            className="input-field" 
-            style={{ minHeight: '80px' }}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </div>
+      </div>
 
-        {action && (
-          <div className="card mb-4" style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-background)', border: 'none' }}>
-            <div style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px', opacity: 0.8 }}>MY COMMITMENT</div>
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '4px' }}>I WILL:</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 500 }}>{action}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '4px' }}>BY:</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 500 }}>{deadline}</div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <div className="mt-4 pt-4 bg-background">
+      <div className="cta-bar mt-auto">
         <button 
-          className="btn btn-primary w-full"
-          onClick={handleCommit}
-          disabled={isSubmitting || !isFormValid}
+          className="btn btn-primary bg-success border-success"
+          style={{ backgroundColor: 'var(--color-success)', color: '#000' }}
+          onClick={handleSubmit}
+          disabled={isSubmitting || !isComplete}
         >
-          {isSubmitting ? 'SAVING...' : 'COMMIT TO THIS ACTION'}
+          {isSubmitting ? 'Saving...' : 'Lock it in'}
+          {!isSubmitting && <ArrowRight size={18} />}
         </button>
       </div>
     </div>
-  );
-};
-
-export default ActionCommitment;
+  )
+}

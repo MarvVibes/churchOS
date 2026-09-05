@@ -1,102 +1,117 @@
-import { useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import { Upload } from 'lucide-react';
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
 
-const SermonInput = () => {
-  const navigate = useNavigate();
-  const { activeSession } = useAppStore();
+export default function SermonInput() {
+  const navigate = useNavigate()
+  const { activeSession } = useAppStore()
+  
+  const [title, setTitle] = useState(activeSession?.sermon_title || '')
+  const [preacher, setPreacher] = useState(activeSession?.preacher_name || '')
+  const [transcript, setTranscript] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [transcript, setTranscript] = useState('');
-  const [title, setTitle] = useState('');
-  const [preacher, setPreacher] = useState('');
-  const [church, setChurch] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  if (!activeSession) {
+    navigate('/')
+    return null
+  }
 
-  const handleAnalyze = async () => {
-    if (!activeSession) return;
-    setIsSubmitting(true);
-
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
     try {
-      // Save transcript
-      await supabase.from('sermon_content').insert({
-        session_id: activeSession.id,
-        title: title || null,
-        preacher: preacher || null,
-        church: church || null,
-        transcript: transcript || null,
-        source_type: 'text'
-      } as any);
-      
-      navigate('/processing');
+      // 1. Update session with metadata if provided
+      if (title || preacher) {
+        await supabase
+          .from('service_sessions')
+          .update({ 
+            sermon_title: title || null,
+            preacher_name: preacher || null 
+          })
+          .eq('id', activeSession.id)
+      }
+
+      // 2. Save transcript/notes
+      if (transcript.trim()) {
+        await supabase
+          .from('sermon_content')
+          .insert({
+            session_id: activeSession.id,
+            title: title || null,
+            preacher: preacher || null,
+            transcript: transcript.trim(),
+            source_type: 'notes'
+          })
+      }
+
+      // Proceed to processing
+      navigate('/processing')
+
     } catch (err) {
-      console.error('Failed to save sermon input', err);
-      setIsSubmitting(false);
+      console.error('Failed to save sermon input:', err)
+      alert('Failed to save. Please try again.')
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div className="flex-col h-full" style={{ paddingBottom: '20px' }}>
-      <header className="mb-6 mt-4">
-        <h1 className="mb-2">Add Today's Message</h1>
-        <p>Help Sunday OS understand the message you just experienced.</p>
-      </header>
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header">
+        <p className="subtitle">Post-Service</p>
+        <h1>Sermon Details</h1>
+      </div>
 
-      <section className="flex-1 overflow-y-auto" style={{ paddingRight: '4px', marginRight: '-4px' }}>
-        <div className="mb-6">
-          <label className="input-label">Audio Recording (Optional)</label>
-          <div className="card flex-col items-center justify-center text-center" style={{ borderStyle: 'dashed', padding: '32px 16px', cursor: 'pointer', backgroundColor: 'transparent' }}>
-            <div style={{ backgroundColor: 'var(--color-surface)', padding: '12px', borderRadius: '50%', marginBottom: '12px' }}>
-              <Upload size={24} className="text-secondary" />
-            </div>
-            <div style={{ fontWeight: 500, marginBottom: '4px' }}>Upload Audio</div>
-            <div className="text-secondary" style={{ fontSize: '0.85rem' }}>MP3, WAV, or M4A</div>
+      <div className="flex-col gap-xl flex-1">
+        <section className="input-group">
+          <label className="input-label">Sermon Title (Optional)</label>
+          <input 
+            type="text"
+            className="input-field" 
+            placeholder="e.g., The Power of Faith"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </section>
+
+        <section className="input-group">
+          <label className="input-label">Preacher (Optional)</label>
+          <input 
+            type="text"
+            className="input-field" 
+            placeholder="e.g., Pastor John"
+            value={preacher}
+            onChange={(e) => setPreacher(e.target.value)}
+          />
+        </section>
+
+        <section className="input-group">
+          <div className="flex justify-between items-center mb-xs">
+            <label className="input-label mb-0">Sermon Notes or Transcript</label>
+            <span className="label-xs text-primary flex items-center gap-xs">
+              <Sparkles size={12} /> AI Analyzed
+            </span>
           </div>
-        </div>
-
-        <div className="input-group">
-          <label className="input-label">Paste Transcript or Notes</label>
           <textarea 
             className="input-field" 
-            style={{ minHeight: '180px' }}
-            placeholder="Paste the sermon transcript, your notes, or a summary..."
+            rows={8}
+            placeholder="Paste the sermon transcript here, or type your raw notes. Our AI will analyze this along with your captured moments."
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
           />
-        </div>
+        </section>
+      </div>
 
-        <div className="mb-4">
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Optional Details</h3>
-          
-          <div className="input-group mb-4">
-            <label className="input-label">Sermon Title</label>
-            <input type="text" className="input-field" value={title} onChange={e => setTitle(e.target.value)} />
-          </div>
-          
-          <div className="input-group mb-4">
-            <label className="input-label">Preacher Name</label>
-            <input type="text" className="input-field" value={preacher} onChange={e => setPreacher(e.target.value)} />
-          </div>
-          
-          <div className="input-group mb-4">
-            <label className="input-label">Church Name</label>
-            <input type="text" className="input-field" value={church} onChange={e => setChurch(e.target.value)} />
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-4 pt-4 bg-background">
+      <div className="cta-bar mt-auto">
         <button 
-          className="btn btn-primary w-full"
-          onClick={handleAnalyze}
-          disabled={isSubmitting || transcript.trim() === ''}
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
         >
-          {isSubmitting ? 'SAVING...' : 'ANALYZE MESSAGE'}
+          {isSubmitting ? 'Saving...' : 'Process with AI'}
+          {!isSubmitting && <ArrowRight size={18} />}
         </button>
       </div>
     </div>
-  );
-};
-
-export default SermonInput;
+  )
+}

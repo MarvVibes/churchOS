@@ -1,80 +1,86 @@
-import { useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-const NEEDS_OPTIONS = [
-  'Direction',
-  'Clarity',
-  'Encouragement',
-  'Strength',
-  'Wisdom',
-  'Peace',
-  'Understanding',
-  'Something Else'
-];
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowRight, ArrowLeft } from 'lucide-react'
 
-const StartSession = () => {
-  const navigate = useNavigate();
-  const [selectedNeeds, setSelectedNeeds] = useState<string[]>([]);
-  const [mindContext, setMindContext] = useState('');
+const COMMON_NEEDS = [
+  'Guidance', 'Peace', 'Healing', 'Direction', 
+  'Clarity', 'Rest', 'Strength', 'Breakthrough'
+]
+
+export default function StartSession() {
+  const navigate = useNavigate()
+  const [selectedNeeds, setSelectedNeeds] = useState<string[]>([])
+  const [context, setContext] = useState('')
 
   const toggleNeed = (need: string) => {
     setSelectedNeeds(prev => 
-      prev.includes(need) ? prev.filter(n => n !== need) : [...prev, need]
-    );
-  };
+      prev.includes(need) 
+        ? prev.filter(n => n !== need)
+        : [...prev, need]
+    )
+  }
 
-  const handleContinue = () => {
-    // In a real app we might pass this state via router state or store it in context/zustand temporarily
-    // until the session is fully started. For now, we'll use router state.
+  const handleNext = () => {
+    // Pass state to the next screen via React Router state
     navigate('/set-intention', { 
-      state: { selectedNeeds, mindContext } 
-    });
-  };
+      state: { selectedNeeds, context } 
+    })
+  }
 
   return (
-    <div className="flex-col h-full">
-      <header className="mb-6 mt-4">
-        <h1 className="mb-2">Before We Begin</h1>
-        <p>Take a moment to become intentional.</p>
-      </header>
+    <div className="animate-fade-in flex-col h-full">
+      <div className="page-header flex items-center gap-md">
+        <button className="btn-icon" onClick={() => navigate(-1)}>
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <p className="subtitle">Step 1 of 2</p>
+          <h1>Where are you at?</h1>
+        </div>
+      </div>
 
-      <section className="flex-1">
-        <div className="mb-8">
-          <label className="input-label mb-4" style={{ fontSize: '1.1rem' }}>What are you hoping to receive today?</label>
-          <div className="selectable-list">
-            {NEEDS_OPTIONS.map(need => (
-              <button
-                key={need}
-                className={`selectable-pill ${selectedNeeds.includes(need) ? 'selected' : ''}`}
-                onClick={() => toggleNeed(need)}
-              >
-                {need}
-              </button>
-            ))}
+      <div className="flex-col gap-xl flex-1">
+        <section>
+          <div className="input-group">
+            <label className="input-label">What are you seeking today?</label>
+            <div className="pill-group">
+              {COMMON_NEEDS.map(need => (
+                <button
+                  key={need}
+                  className={`pill ${selectedNeeds.includes(need) ? 'selected' : ''}`}
+                  onClick={() => toggleNeed(need)}
+                >
+                  {need}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="input-group">
-          <label className="input-label">Is there anything on your mind?</label>
-          <textarea 
-            className="input-field" 
-            placeholder="I need clarity about my next step..."
-            value={mindContext}
-            onChange={(e) => setMindContext(e.target.value)}
-          />
-        </div>
-      </section>
+        <section>
+          <div className="input-group">
+            <label className="input-label">What's on your mind? (Optional)</label>
+            <textarea 
+              className="input-field" 
+              rows={4}
+              placeholder="E.g., I've been feeling anxious about work..."
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+            />
+          </div>
+        </section>
+      </div>
 
-      <div className="mt-auto pt-4">
+      <div className="cta-bar mt-auto">
         <button 
-          className="btn btn-primary w-full"
-          onClick={handleContinue}
-          disabled={selectedNeeds.length === 0 && mindContext.trim() === ''}
+          className="btn btn-primary"
+          onClick={handleNext}
+          disabled={selectedNeeds.length === 0 && context.trim() === ''}
         >
-          CONTINUE
+          Next Step
+          <ArrowRight size={18} />
         </button>
       </div>
     </div>
-  );
-};
-
-export default StartSession;
+  )
+}

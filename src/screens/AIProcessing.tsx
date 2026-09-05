@@ -1,139 +1,90 @@
-import { useEffect, useState  } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
-import { supabase } from '../lib/supabase';
-import { Check, Circle } from 'lucide-react';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Sparkles, Brain, Network, CheckCircle } from 'lucide-react'
+import { useAppStore } from '../store'
+import { supabase } from '../lib/supabase'
+import type { Json } from '../types/supabase'
 
 const STAGES = [
-  'Reading your personal captures',
-  'Identifying central themes',
-  'Extracting scriptures',
-  'Connecting key ideas',
-  'Finding powerful moments',
-  'Building your Revelation Map'
-];
+  { id: 'extract', label: 'Extracting key themes...', icon: <Brain size={24} /> },
+  { id: 'map', label: 'Mapping relationships...', icon: <Network size={24} /> },
+  { id: 'synthesize', label: 'Synthesizing your captures...', icon: <Sparkles size={24} /> },
+  { id: 'done', label: 'Analysis complete', icon: <CheckCircle size={24} /> }
+]
 
-const AIProcessing = () => {
-  const navigate = useNavigate();
-  const { activeSession } = useAppStore();
-  const [currentStageIndex, setCurrentStageIndex] = useState(0);
+export default function AIProcessing() {
+  const navigate = useNavigate()
+  const { activeSession } = useAppStore()
+  
+  const [stageIndex, setStageIndex] = useState(0)
 
   useEffect(() => {
-    let isMounted = true;
-    
-    const simulateProcessing = async () => {
-      // Simulate staging animation
-      for (let i = 0; i < STAGES.length; i++) {
-        if (!isMounted) return;
-        setCurrentStageIndex(i);
-        await new Promise(res => setTimeout(res, 1200)); // 1.2s per stage
-      }
-      
-      if (!isMounted) return;
-      setCurrentStageIndex(STAGES.length); // All complete
+    if (!activeSession) {
+      navigate('/')
+      return
+    }
 
-      // Generate simulated analysis data in DB for this session
-      if (activeSession) {
-        try {
-          await supabase.from('sermon_analysis').insert({
-            session_id: activeSession.id,
-            main_theme: 'Faith That Moves',
-            one_sentence_summary: 'Genuine faith is demonstrated through action, especially when certainty is unavailable.',
-            key_ideas: [
-              { title: 'Faith Requires Movement', explanation: 'Faith is not a passive waiting game.' },
-              { title: 'Waiting Is Not Always Obedience', explanation: 'Sometimes God is waiting on us to take the first step.' },
-              { title: 'Action Reveals Belief', explanation: 'What you do shows what you actually believe, more than what you say.' }
-            ],
-            scriptures: ['James 2:17', 'Hebrews 11:1', 'Genesis 12:1'],
-            key_moments: ['"Delayed obedience is still disobedience."']
-          } as any);
-
-          // Mock Revelation Map nodes & edges
-          await supabase.from('revelation_maps').insert({
-            session_id: activeSession.id,
-            nodes: [
-              { id: 'faith', label: 'FAITH', type: 'main_theme' },
-              { id: 'trust', label: 'TRUST', type: 'concept' },
-              { id: 'obedience', label: 'OBEDIENCE', type: 'concept' },
-              { id: 'waiting', label: 'WAITING', type: 'concept' },
-              { id: 'action', label: 'ACTION', type: 'concept' },
-              { id: 'james', label: 'James 2:17', type: 'scripture' },
-              { id: 'insight1', label: 'Waiting for clarity', type: 'personal_insight' }
-            ],
-            edges: [
-              { source: 'faith', target: 'action' },
-              { source: 'faith', target: 'trust' },
-              { source: 'trust', target: 'obedience' },
-              { source: 'waiting', target: 'action' },
-              { source: 'action', target: 'james' },
-              { source: 'insight1', target: 'waiting' }
-            ]
-          } as any);
-        } catch (err) {
-          console.error('Failed to save mock AI data', err);
-        }
+    const runMockAnalysis = async () => {
+      // Animate through stages
+      for (let i = 0; i < STAGES.length - 1; i++) {
+        await new Promise(r => setTimeout(r, 1500))
+        setStageIndex(i + 1)
       }
 
-      await new Promise(res => setTimeout(res, 1000));
-      if (isMounted) {
-        navigate('/reflection');
+      // Write mock analysis to DB
+      try {
+        await supabase.from('sermon_analysis').insert({
+          session_id: activeSession.id,
+          main_theme: "The Power of Faith in Action",
+          one_sentence_summary: "Faith is not just a belief, it is a verb that requires us to move even when we cannot see the entire staircase.",
+          key_ideas: [
+            "Faith requires movement, not just mental agreement.",
+            "Doubt is a normal part of the process, but it shouldn't dictate your actions.",
+            "God's timing often contradicts our expectations."
+          ] as Json,
+          scriptures: [
+            { reference: "Hebrews 11:1", text: "Now faith is the assurance of things hoped for, the conviction of things not seen." },
+            { reference: "James 2:17", text: "So also faith by itself, if it does not have works, is dead." }
+          ] as Json,
+          key_moments: [] as Json
+        })
+
+        // Wait a second on the "Done" stage before navigating
+        await new Promise(r => setTimeout(r, 1000))
+        navigate('/reflection')
+
+      } catch (err) {
+        console.error('Failed mock analysis:', err)
+        navigate('/reflection') // proceed anyway for testing
       }
-    };
+    }
 
-    simulateProcessing();
+    runMockAnalysis()
+  }, [activeSession, navigate])
 
-    return () => { isMounted = false; };
-  }, [navigate, activeSession]);
+  const currentStage = STAGES[stageIndex]
 
   return (
-    <div className="flex-col h-full items-center justify-center text-center">
-      <header className="mb-12 w-full">
-        <h1 className="mb-2" style={{ fontSize: '1.75rem' }}>Understanding Today's Message</h1>
-      </header>
-
-      <div className="flex-col gap-6 text-left w-full max-w-sm mx-auto" style={{ maxWidth: '300px' }}>
-        {STAGES.map((stage, index) => {
-          const isComplete = index < currentStageIndex;
-          const isActive = index === currentStageIndex;
-          const isPending = index > currentStageIndex;
-
-          return (
-            <div 
-              key={stage} 
-              className="flex items-center gap-4"
-              style={{
-                opacity: isPending ? 0.3 : 1,
-                transition: 'opacity 0.5s ease',
-                transform: isActive ? 'scale(1.05)' : 'scale(1)',
-                transformOrigin: 'left center'
-              }}
-            >
-              {isComplete ? (
-                <Check size={24} className="text-success" style={{ color: 'var(--color-success)' }} />
-              ) : isActive ? (
-                <div style={{ position: 'relative', width: '24px', height: '24px' }}>
-                  <Circle size={24} style={{ color: 'var(--color-accent)' }} />
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: '50%', border: '2px solid var(--color-accent)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
-                </div>
-              ) : (
-                <Circle size={24} className="text-tertiary" />
-              )}
-              <span style={{ 
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? 'var(--color-primary)' : (isComplete ? 'var(--color-text-secondary)' : 'inherit')
-              }}>
-                {stage}
-              </span>
-            </div>
-          );
-        })}
+    <div className="flex-col h-full items-center justify-center text-center px-lg bg-surface">
+      <div className="relative mb-xl">
+        <div className="absolute inset-0 bg-primary opacity-20 blur-xl rounded-full" />
+        <div className="relative z-10 w-24 h-24 rounded-full bg-surface-2 border border-border flex items-center justify-center text-primary">
+          {currentStage.icon}
+        </div>
       </div>
 
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-      `}</style>
-    </div>
-  );
-};
+      <h2 className="mb-sm text-primary">AI is working</h2>
+      <p className="text-2 transition-all duration-300">
+        {currentStage.label}
+      </p>
 
-export default AIProcessing;
+      {/* Progress Bar */}
+      <div className="w-full max-w-xs h-2 bg-surface-2 rounded-full mt-xl overflow-hidden">
+        <div 
+          className="h-full bg-primary transition-all duration-500 ease-out"
+          style={{ width: `${((stageIndex + 1) / STAGES.length) * 100}%` }}
+        />
+      </div>
+    </div>
+  )
+}
