@@ -16,6 +16,7 @@ export default function ServiceMode() {
     interimTranscript, 
     startListening, 
     stopListening,
+    injectMockSpeech,
     error,
     isSupported
   } = useSpeechRecognition()
@@ -23,6 +24,7 @@ export default function ServiceMode() {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [manualNoteText, setManualNoteText] = useState('')
   const [mockAiInsights, setMockAiInsights] = useState<{type: 'verse' | 'point', text: string}[]>([])
+  const [isSimulating, setIsSimulating] = useState(false)
 
   const transcriptEndRef = useRef<HTMLDivElement>(null)
 
@@ -51,16 +53,44 @@ export default function ServiceMode() {
   // Mock AI Engine Simulator (generates fake insights as transcript grows)
   useEffect(() => {
     if (transcript.length > 50 && mockAiInsights.length === 0) {
-      setTimeout(() => {
-        setMockAiInsights(prev => [...prev, { type: 'point', text: 'Theme detected: Faith and Perseverance' }])
-      }, 2000)
+      setTimeout(() => setMockAiInsights(prev => [...prev, { type: 'point', text: '💡 Point: Faith requires active movement, not just passive belief.' }]), 1000)
     }
     if (transcript.length > 150 && mockAiInsights.length === 1) {
-      setTimeout(() => {
-        setMockAiInsights(prev => [...prev, { type: 'verse', text: 'James 1:3 - Knowing this, that the trying of your faith worketh patience.' }])
-      }, 2000)
+      setTimeout(() => setMockAiInsights(prev => [...prev, { type: 'verse', text: '📖 Hebrews 11:1 - Faith is the assurance of things hoped for...' }]), 1000)
+    }
+    if (transcript.length > 300 && mockAiInsights.length === 2) {
+      setTimeout(() => setMockAiInsights(prev => [...prev, { type: 'point', text: '💡 Highlight: Do not let temporary doubt dictate your permanent actions.' }]), 1000)
     }
   }, [transcript, mockAiInsights.length])
+
+  // Simulator for Demo Purposes
+  useEffect(() => {
+    if (!isSimulating) return
+    
+    const textChunks = [
+      "Welcome church. Today we are talking about faith.",
+      "Faith is not just something you hold in your mind.",
+      "It requires active movement.",
+      "You have to step out of the boat.",
+      "As the writer of Hebrews says, faith is the assurance of things hoped for.",
+      "It is the conviction of things not seen.",
+      "So many times we let our temporary doubt dictate our permanent actions.",
+      "But God is calling us to walk by faith, not by sight."
+    ]
+
+    let i = 0
+    const interval = setInterval(() => {
+      if (i < textChunks.length) {
+        injectMockSpeech(textChunks[i])
+        i++
+      } else {
+        setIsSimulating(false)
+        clearInterval(interval)
+      }
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [isSimulating, injectMockSpeech])
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -126,6 +156,13 @@ export default function ServiceMode() {
             <span className="text-sm font-bold">{isListening ? 'Recording Live' : 'Paused'}</span>
             <span className="text-xs text-danger font-mono tracking-wider">{formatTime(elapsedTime)}</span>
           </div>
+          
+          <button 
+            onClick={() => setIsSimulating(!isSimulating)}
+            className="ml-md text-xs bg-surface-2 px-sm py-xs rounded-md text-3 hover:text-1 border border-border"
+          >
+            {isSimulating ? 'Stop Demo' : 'Simulate Sermon'}
+          </button>
         </div>
         
         <button 

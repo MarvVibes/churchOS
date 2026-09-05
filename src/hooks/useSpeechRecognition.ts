@@ -90,6 +90,10 @@ export function useSpeechRecognition() {
     }
   }, [recognition])
 
+  const injectMockSpeech = useCallback((text: string) => {
+    setTranscript((prev) => prev + text + ' ')
+  }, [])
+
   const clearTranscript = useCallback(() => {
     setTranscript('')
     setInterimTranscript('')
@@ -101,6 +105,7 @@ export function useSpeechRecognition() {
     interimTranscript,
     startListening,
     stopListening,
+    injectMockSpeech,
     clearTranscript,
     error,
     isSupported: !!SpeechRecognition
