@@ -21,18 +21,28 @@ export default function Profile() {
 
         <div className="flex-col gap-sm">
           <div className="section-header">Account</div>
-          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left">
+          <button 
+            className="card card-interactive py-md px-md flex items-center gap-md w-full text-left"
+            onClick={() => alert('App Settings coming soon!')}
+          >
             <Settings size={18} className="text-3" />
             <span className="font-medium text-sm text-1">App Settings</span>
           </button>
-          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left">
+          <button 
+            className="card card-interactive py-md px-md flex items-center gap-md w-full text-left"
+            onClick={() => alert('Privacy & Data coming soon!')}
+          >
             <Shield size={18} className="text-3" />
             <span className="font-medium text-sm text-1">Privacy & Data</span>
           </button>
         </div>
 
         <div className="flex-col gap-sm mt-md">
-          <button className="card card-interactive py-md px-md flex items-center gap-md w-full text-left" style={{ borderColor: 'var(--color-danger)' }}>
+          <button 
+            className="card card-interactive py-md px-md flex items-center gap-md w-full text-left" 
+            style={{ borderColor: 'var(--color-danger)' }}
+            onClick={() => alert('Sign out coming soon!')}
+          >
             <LogOut size={18} className="text-danger" />
             <span className="font-medium text-sm text-danger">Sign Out</span>
           </button>

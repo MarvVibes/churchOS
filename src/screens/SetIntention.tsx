@@ -56,9 +56,9 @@ export default function SetIntention() {
       startSession(session)
       navigate('/service')
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to start session:', err)
-      alert('Failed to start session. Please check your connection and try again.')
+      alert(`Failed to start session: ${err.message || JSON.stringify(err)}`)
     } finally {
       setIsStarting(false)
     }
